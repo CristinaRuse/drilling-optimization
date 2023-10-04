@@ -1,1 +1,2 @@
-# drilling-optimization
+# OPTIMIZATION OF BIT WEIGHT AND ROTARY SPEED FOR MINIMUM-COST DRIILING USING THE BFGS ALGORITHM
+The scipy.optimize package in Python offers a wide range of nonlinear optimization algorithms, including the Broyden-Fletcher-Goldfarb-Shanno (BFGS) method, which was used to find the unique minimum of the drilling cost function by optimizing both weight on bit and rotary speed in a fast and efficient manner.
