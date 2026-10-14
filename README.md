@@ -1,6 +1,3 @@
-Here is the corrected `README.md` file with the math-mode delimiters properly formatted and closed:
-
-```markdown
 # ⚡ Drill Cost Function Optimization App
 
 An interactive Python application built with **Streamlit**, **SciPy**, and **Matplotlib** to optimize drilling parameters (Weight on Bit and Rotary Speed) for minimum cost per foot using the **BFGS optimization algorithm**[cite: 5].
@@ -61,6 +58,3 @@ $$\text{Cost, \$/ft} = \frac{\text{Bit Cost} + (\text{Rig Operating Cost} \times
 
 By treating the system as an unconstrained nonlinear optimization problem, the BFGS algorithm evaluates the smooth, differentiable cost function to locate the global minimum cost per foot.
 
-```
-
-```
