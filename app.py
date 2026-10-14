@@ -4,8 +4,34 @@ import scipy
 from scipy import optimize
 import matplotlib.pyplot as plt
 
-st.title("Drill Cost Function Optimization App")
-st.write("Adjust the model parameters below to observe changes in the drill cost function, surface plot, and optimization path.")
+# --- 1. APP CONFIG & DARK THEME SETUP ---
+st.set_page_config(page_title="Drill Cost Function Optimization App", layout="wide")
+
+plt.style.use('dark_background')
+plt.rcParams.update({
+    "axes.facecolor": "#121214",
+    "figure.facecolor": "#121214",
+    "text.color": "#e4e4e7",
+    "axes.labelcolor": "#fde047",
+    "xtick.color": "#d4d4d8",
+    "ytick.color": "#d4d4d8",
+    "grid.color": "#27272a"
+})
+
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #0f0e0e;
+        color: #e4e4e7;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #141416;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("⚡ Drill Cost Function Optimization App")
+st.write("Adjust the model parameters below to observe changes in the drill cost function, surface plot, and optimization path[cite: 1].")
 
 # --- SIDEBAR INPUTS ---
 st.sidebar.header("Model Parameters")
@@ -64,8 +90,20 @@ def drill_cost(x):
 x0 = np.array([70.0, 85.0])
 res = scipy.optimize.fmin_bfgs(drill_cost, x0, disp=False, retall=True)
 
+optimal_params = res[0]
+optimal_cost = drill_cost(optimal_params)
+
 listx = [res[1][i][0] for i in range(len(res[1]))]
 listy = [res[1][i][1] for i in range(len(res[1]))]
+
+# --- DISPLAY OPTIMIZATION METRICS ---
+st.subheader("🎯 Optimization Results")
+m1, m2, m3 = st.columns(3)
+m1.metric("Optimal Drill Cost", f"${optimal_cost:,.2f}")
+m2.metric("Optimal Weight on Bit (W)", f"{optimal_params[0]:,.2f} lbs")
+m3.metric("Optimal Rotary Speed (N)", f"{optimal_params[1]:,.2f} RPM")
+
+st.markdown("---")
 
 # --- PLOTS ---
 col1, col2 = st.columns(2)
@@ -80,9 +118,9 @@ with col1:
     fig1 = plt.figure(figsize=(8, 6))
     ax1 = fig1.add_subplot(111, projection='3d')
     ax1.view_init(45, -90)
-    surf = ax1.plot_surface(xgrid, ygrid, drill_cost(xy), cmap='tab20b')
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('y')
+    surf = ax1.plot_surface(xgrid, ygrid, drill_cost(xy), cmap='inferno')
+    ax1.set_xlabel('x (W)')
+    ax1.set_ylabel('y (N)')
     ax1.set_zlabel('drill_cost(x, y)')
     fig1.colorbar(surf, shrink=0.5, aspect=7)
     st.pyplot(fig1)
@@ -96,10 +134,11 @@ with col2:
     
     fig2, ax2 = plt.subplots(figsize=(8, 6))
     lines = range(1, 52, 1)
-    CS = ax2.contour(x1_mesh, x2_mesh, f_mesh, lines)
+    CS = ax2.contour(x1_mesh, x2_mesh, f_mesh, lines, cmap='plasma')
     ax2.clabel(CS, inline=1, fontsize=8)
     ax2.set_title('Drill cost function contour plot')
     ax2.set_xlabel('W (lbs)')
     ax2.set_ylabel('N (rpm)')
-    ax2.plot(listx, listy, 'r-o')
+    ax2.plot(listx, listy, 'r-o', label='Optimization Path')
+    ax2.legend(loc='upper right')
     st.pyplot(fig2)
