@@ -1,0 +1,105 @@
+import streamlit as st
+import numpy as np
+import scipy
+from scipy import optimize
+import matplotlib.pyplot as plt
+
+st.title("Drill Cost Function Optimization App")
+st.write("Adjust the model parameters below to observe changes in the drill cost function, surface plot, and optimization path.")
+
+# --- SIDEBAR INPUTS ---
+st.sidebar.header("Model Parameters")
+W_op = st.sidebar.number_input("W_op (lbs)", value=50.0)
+N_op = st.sidebar.number_input("N_op (RPM)", value=65.0)
+well_depth = st.sidebar.number_input("Well Depth (ft)", value=11300.0)
+rig_cost = st.sidebar.number_input("Rig Cost ($/hr)", value=178.333)
+bit_size = st.sidebar.number_input("Bit Size (in)", value=8.5)
+bit_cost = st.sidebar.number_input("Bit Cost ($)", value=309.56)
+trip_time = st.sidebar.number_input("Trip Time (hrs)", value=7.3)
+run_time = st.sidebar.number_input("Run Time (hrs)", value=12.3)
+R_i = st.sidebar.number_input("R_i (ft)", value=150.0)
+R_f = st.sidebar.number_input("R_f (ft)", value=115.0)
+H_f = st.sidebar.number_input("H_f", value=0.875)
+
+st.sidebar.header("5-spot Test Values")
+W_1 = st.sidebar.number_input("W_values[1] (lbs)", value=35_000.0)
+W_2 = st.sidebar.number_input("W_values[2] (lbs)", value=50_000.0)
+W_3 = st.sidebar.number_input("W_values[3] (lbs)", value=35_000.0)
+W_4 = st.sidebar.number_input("W_values[4] (lbs)", value=50_000.0)
+
+N_1 = st.sidebar.number_input("N_values[1] (RPM)", value=80.0)
+N_2 = st.sidebar.number_input("N_values[2] (RPM)", value=80.0)
+N_3 = st.sidebar.number_input("N_values[3] (RPM)", value=150.0)
+N_4 = st.sidebar.number_input("N_values[4] (RPM)", value=150.0)
+
+R_1 = st.sidebar.number_input("R_values[1] (ft)", value=18.0)
+R_2 = st.sidebar.number_input("R_values[2] (ft)", value=25.0)
+R_3 = st.sidebar.number_input("R_values[3] (ft)", value=27.0)
+R_4 = st.sidebar.number_input("R_values[4] (ft)", value=36.0)
+
+W_values = [42_000, W_1, W_2, W_3, W_4]
+N_values = [120, N_1, N_2, N_3, N_4]
+R_values = [24, R_1, R_2, R_3, R_4]
+
+# --- INTERMEDIATE VARIABLES & FUNCTIONS ---
+C2 = (R_i / 3 - R_f / 3) / (R_f / 3 * H_f)
+M1 = ((R_values[1] * W_values[2] - R_values[2] * W_values[1]) / (R_values[1] - R_values[2]) / 1_000)
+M2 = ((R_values[3] * W_values[4] - R_values[4] * W_values[3]) / (R_values[3] - R_values[4]) / 1_000)
+M = (M1 + M2) / 2
+l1 = (np.log10(R_values[1] / R_values[4]) / np.log10(N_values[1] / N_values[4]))
+l2 = (np.log10(R_values[2] / R_values[3]) / np.log10(N_values[2] / N_values[3]))
+l = (l1 + l2) / 2
+K = ((1 + C2 / 2 * H_f) * (R_i + R_f) / N_op**l / (W_op - M) / run_time)
+D1 = (1 / bit_size)
+A_f = (1_000 * (-D1 * W_op + 10) / (3 + 3) / (2 * N_op + 0.000087 * N_op**3) * (H_f + 6 / 2 * H_f**2))
+E1 = (bit_cost + rig_cost * trip_time)
+E2 = (1_000 / A_f * (1 + 6 / 2))
+E3 = (1_000 * K / A_f * (6 / C2 + (C2 - 6) / C2**2 * np.log(1 + C2)))
+
+def drill_cost(x):
+    return (E1 + rig_cost * E2 * (-D1 * x[0] + 10) / (2 * x[1] + 0.000087 * x[1]**3)) / (
+            E3 * (x[0] - M) * (-D1 * x[0] + 10) / (2 * x[1]**(1 - l) + 0.000087 * x[1]**(3 - l)))
+
+# --- RUN OPTIMIZATION ---
+x0 = np.array([70.0, 85.0])
+res = scipy.optimize.fmin_bfgs(drill_cost, x0, disp=False, retall=True)
+
+listx = [res[1][i][0] for i in range(len(res[1]))]
+listy = [res[1][i][1] for i in range(len(res[1]))]
+
+# --- PLOTS ---
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Surface Plot")
+    x = np.arange(30, 80)
+    y = np.arange(50, 120)
+    xgrid, ygrid = np.meshgrid(x, y)
+    xy = np.stack([xgrid, ygrid])
+
+    fig1 = plt.figure(figsize=(8, 6))
+    ax1 = fig1.add_subplot(111, projection='3d')
+    ax1.view_init(45, -90)
+    surf = ax1.plot_surface(xgrid, ygrid, drill_cost(xy), cmap='tab20b')
+    ax1.set_xlabel('x')
+    ax1.set_ylabel('y')
+    ax1.set_zlabel('drill_cost(x, y)')
+    fig1.colorbar(surf, shrink=0.5, aspect=7)
+    st.pyplot(fig1)
+
+with col2:
+    st.subheader("Contour Plot & Optimization Path")
+    i1 = np.arange(30, 80, 3)
+    i2 = np.arange(50, 120, 3)
+    x1_mesh, x2_mesh = np.meshgrid(i1, i2)
+    f_mesh = (E1 + rig_cost * E2 * (-D1 * x1_mesh + 10) / (2 * x2_mesh + 0.000087 * x2_mesh**3)) / (E3 * (x1_mesh - M) * (-D1 * x1_mesh + 10) / (2 * x2_mesh**(1 - l) + 0.000087 * x2_mesh**(3 - l)))
+    
+    fig2, ax2 = plt.subplots(figsize=(8, 6))
+    lines = range(1, 52, 1)
+    CS = ax2.contour(x1_mesh, x2_mesh, f_mesh, lines)
+    ax2.clabel(CS, inline=1, fontsize=8)
+    ax2.set_title('Drill cost function contour plot')
+    ax2.set_xlabel('W (lbs)')
+    ax2.set_ylabel('N (rpm)')
+    ax2.plot(listx, listy, 'r-o')
+    st.pyplot(fig2)
